@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CSV Viewer</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th { padding: 6px 12px; text-align: left; border-bottom: 2px solid #ccc; white-space: nowrap; font-size: 12px; color: #666; }
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { color: #333; }
+        th.sorted { color: #2563eb; }
+        td { padding: 5px 12px; border-bottom: 1px solid #eee; white-space: nowrap; font-size: 13px; }
+        tr:hover td { background: #fafafa; }
+        .pos { color: #16a34a; }
+        .neg { color: #dc2626; }
+    </style>
+</head>
+<body>
+    <div id="out"></div>
+    <script>
+        const LABELS = {
+            "Ticker":     "Ticker",
+            "Name":       "Name<br>이름",
+            "Group":      "Group<br>종목",
+            "Market Cap": "Market Cap<br>시가총액",
+            "Rev Q1":     "Rev Q1<br>매출 1분기",
+            "Net Inc Q1": "Net Inc Q1<br>순이익 1분기",
+            "Margin Q1":  "Margin Q1<br>마진 1분기",
+            "Rev Q2":     "Rev Q2<br>매출 2분기",
+            "Net Inc Q2": "Net Inc Q2<br>순이익 2분기",
+            "Margin Q2":  "Margin Q2<br>마진 2분기",
+            "Δ 1 Month":  "Δ 1 Month<br>1개월",
+            "Δ 3 Month":  "Δ 3 Month<br>3개월",
+            "Δ 6 Month":  "Δ 6 Month<br>6개월",
+            "Δ 1 Year":   "Δ 1 Year<br>1년",
+            "Q1 Period":  "Q1 Period<br>기간",
+        };
+
+        const UNSORTABLE = ['Ticker', 'Name', 'Q1 Period'];
+        let rows = [], headers = [], sortCol = null, sortAsc = false;
+
+        function parseNum(v) {
+            if (!v || v === 'N/A') return -Infinity;
+            const n = parseFloat(v.replace(/[+$%BT]/g, ''));
+            if (isNaN(n)) return -Infinity;
+            if (v.includes('T')) return n * 1000;
+            return n;
+        }
+
+        function render() {
+            const data = [...rows];
+            if (sortCol !== null) {
+                data.sort((a, b) => {
+                    const av = parseNum(a[sortCol]);
+                    const bv = parseNum(b[sortCol]);
+                    return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+                });
+            }
+
+            let html = '<table><thead><tr>';
+            headers.forEach(h => {
+                const s = !UNSORTABLE.includes(h);
+                const active = h === sortCol;
+                const arrow = active ? (sortAsc ? ' ↑' : ' ↓') : (s ? ' ↕' : '');
+                const label = LABELS[h] || h;
+                html += `<th class="${s ? 'sortable' : ''}${active ? ' sorted' : ''}" data-col="${h}">${label}${arrow}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            data.forEach(row => {
+                html += '<tr>' + headers.map(h => {
+                    const v = row[h] || '';
+                    const cls = v.startsWith('+') ? ' class="pos"' : (v.startsWith('-') && v !== '-' ? ' class="neg"' : '');
+                    return `<td${cls}>${v}</td>`;
+                }).join('') + '</tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('out').innerHTML = html;
+
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const col = th.dataset.col;
+                    if (sortCol === col) sortAsc = !sortAsc;
+                    else { sortCol = col; sortAsc = false; }
+                    render();
+                });
+            });
+        }
+
+        fetch('stock_dashboard.csv')
+            .then(res => res.text())
+            .then(text => {
+                const lines = text.trim().split('\n');
+                headers = lines[0].split(',').map(h => h.trim());
+                rows = lines.slice(1).map(line => {
+                    const cells = line.split(',').map(v => v.trim());
+                    const obj = {};
+                    headers.forEach((h, i) => obj[h] = cells[i] || '');
+                    return obj;
+                });
+                render();
+            })
+            .catch(() => document.getElementById('out').textContent = 'Could not load stock_dashboard.csv');
+    </script>
+</body>
+</html>
