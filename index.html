@@ -2,8 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV Viewer</title>
+    <title>Stock Chart 기술주 분석 차트</title>
     <style>
         body { font-family: sans-serif; padding: 20px; }
         table { border-collapse: collapse; width: 100%; }
@@ -15,24 +14,10 @@
         tr:hover td { background: #fafafa; }
         .pos { color: #16a34a; }
         .neg { color: #dc2626; }
-
-        /* portrait: hide all but key columns */
-        @media (orientation: portrait) {
-            .hide-portrait { display: none; }
-        }
-
-        /* landscape: show everything, allow horizontal scroll */
-        @media (orientation: landscape) {
-            body { padding: 10px; }
-            .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-            td, th { font-size: 11px; padding: 4px 8px; }
-        }
     </style>
 </head>
 <body>
-    <div class="table-wrap">
-        <div id="out"></div>
-    </div>
+    <div id="out"></div>
     <script>
         const LABELS = {
             "Ticker":     "Ticker",
@@ -51,9 +36,6 @@
             "Δ 1 Year":   "Δ 1 Year<br>1년",
             "Q1 Period":  "Q1 Period<br>기간",
         };
-
-        // columns visible in portrait mode
-        const PORTRAIT_COLS = ['Ticker', 'Name', 'Market Cap', 'Margin Q1', 'Δ 1 Month', 'Δ 1 Year'];
 
         const UNSORTABLE = ['Ticker', 'Name', 'Q1 Period'];
         let rows = [], headers = [], sortCol = null, sortAsc = false;
@@ -82,32 +64,18 @@
                 const active = h === sortCol;
                 const arrow = active ? (sortAsc ? ' ↑' : ' ↓') : (s ? ' ↕' : '');
                 const label = LABELS[h] || h;
-                const hidden = PORTRAIT_COLS.includes(h) ? '' : ' hide-portrait';
-                html += `<th class="${s ? 'sortable' : ''}${active ? ' sorted' : ''}${hidden}" data-col="${h}">${label}${arrow}</th>`;
+                html += `<th class="${s ? 'sortable' : ''}${active ? ' sorted' : ''}" data-col="${h}">${label}${arrow}</th>`;
             });
             html += '</tr></thead><tbody>';
             data.forEach(row => {
                 html += '<tr>' + headers.map(h => {
                     const v = row[h] || '';
                     const cls = v.startsWith('+') ? ' class="pos"' : (v.startsWith('-') && v !== '-' ? ' class="neg"' : '');
-                    const hidden = PORTRAIT_COLS.includes(h) ? '' : ' hide-portrait';
-                    return `<td${cls}${hidden ? ` class="${cls ? cls.slice(8,-1) + ' hide-portrait' : 'hide-portrait'}"` : ''}>${v}</td>`;
+                    return `<td${cls}>${v}</td>`;
                 }).join('') + '</tr>';
             });
             html += '</tbody></table>';
             document.getElementById('out').innerHTML = html;
-
-            // fix td classes — rebuild cleanly
-            document.querySelectorAll('#out tbody tr').forEach((tr, ri) => {
-                tr.querySelectorAll('td').forEach((td, ci) => {
-                    const h = headers[ci];
-                    const v = rows[ri] ? (rows[ri][h] || '') : '';
-                    td.className = '';
-                    if (!PORTRAIT_COLS.includes(h)) td.classList.add('hide-portrait');
-                    if (v.startsWith('+')) td.classList.add('pos');
-                    else if (v.startsWith('-') && v !== '-') td.classList.add('neg');
-                });
-            });
 
             document.querySelectorAll('th.sortable').forEach(th => {
                 th.addEventListener('click', () => {
